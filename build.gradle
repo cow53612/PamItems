@@ -12,10 +12,16 @@ repositories {
         name = "papermc-repo"
         url = "https://repo.papermc.io/repository/maven-public/"
     }
+    maven {
+        name = "matteodev"
+        url = "https://maven.devs.beer/"
+    }
 }
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
+    implementation 'dev.aurelium:auraskills-api-bukkit:2.2.4'
+    implementation "dev.lone:api-itemsadder:4.0.10"
 }
 
 tasks {

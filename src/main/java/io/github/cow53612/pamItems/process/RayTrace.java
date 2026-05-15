@@ -1,15 +1,12 @@
-package io.github.cow53612.cowmcmmo.process;
+package io.github.cow53612.pamItems.process;
 
 import org.bukkit.Location;
 import org.bukkit.Particle;
-import org.bukkit.entity.Cow;
+import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
-import org.bukkit.util.BoundingBox;
 import org.bukkit.util.Vector;
-import java.util.ArrayList;
-import org.bukkit.Effect;
-import org.bukkit.World;
+
 import java.util.ArrayList;
 import java.util.List;
 

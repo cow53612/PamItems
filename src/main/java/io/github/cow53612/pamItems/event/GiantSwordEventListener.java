@@ -1,8 +1,10 @@
-package io.github.cow53612.cowmcmmo.event;
+package io.github.cow53612.pamItems.event;
 
+import dev.aurelium.auraskills.api.user.SkillsUser;
 import dev.lone.itemsadder.api.CustomStack;
-import io.github.cow53612.cowmcmmo.manager.CooldownManager;
-import io.github.cow53612.cowmcmmo.CowMcMMO;
+import io.github.cow53612.pamItems.PamItems;
+import io.github.cow53612.pamItems.manager.CooldownManager;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
@@ -10,115 +12,108 @@ import org.bukkit.Sound;
 import org.bukkit.block.Block;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
-import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.EntityEquipment;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.BlockIterator;
 
 import java.util.Collection;
-import java.util.Objects;
 
-public class GiantSwordEventListener implements Listener {
+import static io.github.cow53612.pamItems.constant.CoolDown.GIANT_SWORD_COOLDOWN;
+import static io.github.cow53612.pamItems.constant.CosumeMana.GIANT_SWORD_MANA;
+import static io.github.cow53612.pamItems.constant.Performance.GIANT_SWORD_ATTACK_RANGE;
+import static io.github.cow53612.pamItems.constant.Performance.GIANT_SWORD_DAMAGE;
 
-    private final CowMcMMO cmm;
+public class GiantSwordEventListener implements Activatable {
 
-    public GiantSwordEventListener(CowMcMMO cmm) {
-        this.cmm = cmm;
+    private final PamItems pamItems;
+
+    public GiantSwordEventListener(PamItems pamItems) {
+        this.pamItems = pamItems;
     }
 
-    @EventHandler
-    public void onRightClickWithGiantSword(PlayerInteractEvent event) {
+    @Override
+    public void onRightClickWithCustomItem(CustomStack playerHoldItem, PlayerInteractEvent event) {
         Player player = event.getPlayer();
-        ItemStack playerHoldItem;
+        SkillsUser skillsUser = PamItems.auraSkills.getUser(player.getUniqueId());
 
-        try {
-            playerHoldItem= Objects.requireNonNull(player.getEquipment()).getItemInMainHand();
+        if (playerHoldItem.getId().equals("giant_sword")) {
+            if (skillsUser.getMana() < GIANT_SWORD_MANA) {
+                player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1, 0.5f);
+                player.sendMessage("§cマナが足りません！");
+                return;
+            }
 
-            if (CustomStack.byItemStack(playerHoldItem).getId().equals("giants_sword") && (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK) && event.getHand() == EquipmentSlot.HAND) {
-                if (CustomStack.byItemStack(player.getEquipment().getItemInOffHand()) == null) {
-                    player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1, 0.5f);
-                    player.sendMessage("§cオフハンドにEnergy Orbがありません！");
+            if (CooldownManager.hasCooldown("giant_sword_pre_cooldown_" + player.getName())) {
+                if (CooldownManager.getCooldown("giant_sword_pre_cooldown_" + player.getName()) > System.currentTimeMillis()) {
                     return;
                 }
+            }
 
-                if (CustomStack.byItemStack(player.getEquipment().getItemInOffHand()).getId().equals("energy_orb")) {
-                    if (CooldownManager.hasCooldown("giant_sword_pre_cooldown_" + player.getName())) {
-                        if (CooldownManager.getCooldown("giant_sword_pre_cooldown_" + player.getName()) > System.currentTimeMillis()) {
-                            return;
-                        }
-                    }
+            CooldownManager.addCooldown("giant_sword_pre_cooldown_" + player.getName(), System.currentTimeMillis() + 100);
 
-                    CooldownManager.addCooldown("giant_sword_pre_cooldown_" + player.getName(), System.currentTimeMillis() + 100);
-
-                    if (CooldownManager.hasCooldown("giant_sword_cooldown_" + player.getName())) {
-                        if (CooldownManager.getCooldown("giant_sword_cooldown_" + player.getName()) > System.currentTimeMillis()) {
-                            player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1, 0.5f);
-                            player.sendMessage("§cこのアビリティはあと" + (((CooldownManager.getCooldown("giant_sword_cooldown_" + player.getName()) - System.currentTimeMillis()) / 1000) + 1) + "秒間クールダウン中です！");
-                            return;
-                        }
-                    }
-
-                    ItemStack offHandItem = player.getEquipment().getItemInOffHand();
-                    offHandItem.setAmount(offHandItem.getAmount() - 1);
-
-                    Location targetGroundLocation, summoningLocation, preSummoningLocation;
-                    targetGroundLocation = getGroundLocation(getLookingLocation(player));
-                    summoningLocation = getGroundLocation(getLookingLocation(player));
-                    preSummoningLocation = getGroundLocation(getLookingLocation(player));
-
-                    summoningLocation.setX(targetGroundLocation.getX() - 1);
-                    summoningLocation.setZ(targetGroundLocation.getZ() - 4);
-
-                    preSummoningLocation.setY(targetGroundLocation.getY() + 10);
-
-                    Giant giant = (Giant) player.getWorld().spawnEntity(summoningLocation, EntityType.GIANT);
-
-                    giant.setInvulnerable(true);
-                    giant.setCollidable(false);
-                    giant.setGravity(false);
-                    giant.setCustomName("Grumm");
-                    giant.setCustomNameVisible(false);
-                    Objects.requireNonNull(giant.getEquipment()).setItemInMainHand(CustomStack.getInstance("giants_sword").getItemStack());
-
-                    new BukkitRunnable() {
-                        @Override
-                        public void run() {
-                            giant.remove();
-                            player.setCollidable(true);
-                        }
-                    }.runTaskLater(cmm, 200);
-
-                    Collection<Entity> targetEntities = player.getWorld().getNearbyEntities(targetGroundLocation, 4.0, 4.0, 4.0);
-
-                    for (Entity targetEntity : targetEntities) {
-                        if (targetEntity instanceof LivingEntity && !(targetEntity instanceof Player)) {
-                            LivingEntity damagedEntity = (LivingEntity) targetEntity;
-
-                            if (!(damagedEntity instanceof Villager || damagedEntity instanceof Giant)) {
-                                if (damagedEntity instanceof Tameable) {
-                                    if (!((Tameable)damagedEntity).isTamed()) {
-                                        damagedEntity.damage(50, player);
-                                    }
-                                }  else {
-                                    damagedEntity.damage(50, player);
-                                }
-                            }
-                        }
-                    }
-                    player.getWorld().spawnParticle(Particle.EXPLOSION_HUGE, targetGroundLocation, 5, 0, 0, 0);
-                    player.getWorld().playSound(targetGroundLocation, Sound.BLOCK_ANVIL_PLACE, 1f, 0.5f);
-
-                    CooldownManager.addCooldown("giant_sword_cooldown_" + player.getName(), System.currentTimeMillis() + 10000);
-                } else {
+            if (CooldownManager.hasCooldown("giant_sword_cooldown_" + player.getName())) {
+                if (CooldownManager.getCooldown("giant_sword_cooldown_" + player.getName()) > System.currentTimeMillis()) {
                     player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1, 0.5f);
-                    player.sendMessage("§cオフハンドにEnergy Orbがありません！");
+                    player.sendMessage("§cこのアビリティはあと" + (((CooldownManager.getCooldown("giant_sword_cooldown_" + player.getName()) - System.currentTimeMillis()) / 1000) + 1) + "秒間クールダウン中です！");
+                    return;
                 }
             }
-        } catch (NullPointerException ignored) {}
+
+            skillsUser.setMana(skillsUser.getMana() - GIANT_SWORD_MANA);
+            
+            player.setCollidable(false);
+
+            Location targetGroundLocation, summoningLocation, preSummoningLocation;
+            targetGroundLocation = getGroundLocation(getLookingLocation(player));
+            summoningLocation = getGroundLocation(getLookingLocation(player));
+            preSummoningLocation = getGroundLocation(getLookingLocation(player));
+
+            summoningLocation.setX(targetGroundLocation.getX() - 1);
+            summoningLocation.setZ(targetGroundLocation.getZ() - 4);
+
+            preSummoningLocation.setY(targetGroundLocation.getY() + 10);
+
+            Giant giant = (Giant) player.getWorld().spawnEntity(summoningLocation, EntityType.GIANT);
+
+            giant.setInvulnerable(true);
+            giant.setCollidable(false);
+            giant.setGravity(false);
+            giant.customName(Component.text("Grumm"));
+            giant.setCustomNameVisible(false);
+
+            EntityEquipment equipment = giant.getEquipment();
+            if (equipment == null) return;
+            equipment.setItem(EquipmentSlot.HAND, ItemStack.of(Material.IRON_SWORD));
+
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    giant.remove();
+                    player.setCollidable(true);
+                }
+            }.runTaskLater(pamItems, 200);
+
+            Collection<Entity> targetEntities = player.getWorld().getNearbyEntities(targetGroundLocation, GIANT_SWORD_ATTACK_RANGE, GIANT_SWORD_ATTACK_RANGE, GIANT_SWORD_ATTACK_RANGE);
+
+            for (Entity targetEntity : targetEntities) {
+                if (targetEntity instanceof LivingEntity damagedEntity && !(targetEntity instanceof Player)) {
+
+                    if (damagedEntity instanceof Villager || damagedEntity instanceof Giant) continue;
+                    if (damagedEntity instanceof Tameable) {
+                        if (((Tameable)damagedEntity).isTamed()) continue;
+                    }
+                    damagedEntity.damage(GIANT_SWORD_DAMAGE, player);
+                }
+            }
+            player.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, targetGroundLocation, 5, 0, 0, 0);
+            player.getWorld().playSound(targetGroundLocation, Sound.BLOCK_ANVIL_PLACE, 1f, 0.5f);
+
+            CooldownManager.addCooldown("giant_sword_cooldown_" + player.getName(), System.currentTimeMillis() + GIANT_SWORD_COOLDOWN);
+        }
     }
 
     @EventHandler

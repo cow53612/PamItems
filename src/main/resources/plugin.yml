@@ -2,3 +2,12 @@ name: PamItems
 version: '1.0-SNAPSHOT'
 main: io.github.cow53612.pamItems.PamItems
 api-version: '1.21'
+
+commands:
+  pamitems:
+    description: Init custom item
+    permission: pamitems.command
+    usage: /<command>
+    permission-message: You do not have <permission>.
+
+depend: [AuraSkills, ItemsAdder]
