@@ -1,6 +1,8 @@
 package io.github.cow53612.pamItems.event;
 
+import dev.aurelium.auraskills.api.user.SkillsUser;
 import dev.lone.itemsadder.api.CustomStack;
+import io.github.cow53612.pamItems.PamItems;
 import io.github.cow53612.pamItems.manager.CooldownManager;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -8,15 +10,14 @@ import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.block.Block;
 import org.bukkit.entity.*;
-import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.BlockIterator;
 import java.util.Collection;
 
 import static io.github.cow53612.pamItems.constant.CoolDown.CLICK_COOLDOWN;
+import static io.github.cow53612.pamItems.constant.CosumeMana.HYPERION_MANA;
 import static io.github.cow53612.pamItems.constant.Performance.*;
 
 public class HyperionEventListener implements Activatable {
@@ -24,9 +25,13 @@ public class HyperionEventListener implements Activatable {
     @Override
     public void onRightClickWithCustomItem(CustomStack playerHoldItem, PlayerInteractEvent event) {
         Player player = event.getPlayer();
-
-        if (playerHoldItem.getId().equals("hyperion") && (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK) && event.getHand() == EquipmentSlot.HAND) {
-            //マナが0かの確認処理未実装
+        SkillsUser skillsUser = PamItems.auraSkills.getUser(player.getUniqueId());
+        if (playerHoldItem.getId().equals("hyperion")) {
+            if (skillsUser.getMana() < HYPERION_MANA) {
+                player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1, 0.5f);
+                player.sendMessage("§cマナが足りません！");
+                return;
+            }
             if (CooldownManager.hasCooldown("hyperion_cooldown_" + player.getName())) {
                 if (CooldownManager.getCooldown("hyperion_cooldown_" + player.getName()) > System.currentTimeMillis()) {
                     return;
@@ -34,7 +39,7 @@ public class HyperionEventListener implements Activatable {
             }
             CooldownManager.addCooldown("hyperion_cooldown_" + player.getName(), System.currentTimeMillis() + CLICK_COOLDOWN);
 
-            //マナ減少処理未実装
+            skillsUser.setMana(skillsUser.getMana() - HYPERION_MANA);
 
             Location teleportLocation = getTargetLocation(player);
 
